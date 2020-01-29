@@ -3,15 +3,15 @@ from collections import namedtuple
 import sys
 
 
-Question = namedtuple( 'Question', ['wref', 'qnum', 'type', 'contentref', 'content'])
+Question = namedtuple('Question', ['wref', 'qnum', 'type', 'contentref', 'content'])
 
-toint = lambda y: list(map(lambda x: int(x), y))
+
 
 def parse_question_address(line):
     address, content = line.split(' ', maxsplit=1)
     ref, qdata = address.split('@', maxsplit=1)
     qparts = qdata.split('.')
-    return Question(toint(qparts[0].split('-')), int(qparts[1]), qparts[2], ref, content)
+    return Question([int(y) for y in qparts[0].split('-')], int(qparts[1]), qparts[2], ref, content)
 
 def read_af_text_line(line):
     address, content = line.split(' ', maxsplit=1)
@@ -44,7 +44,7 @@ def read_af_text(fpath, line_refs):
     return out
 
 def build_q_ref(q,t):
-    return f"{q.contentref}@{'-'.join(map(str,q.wref))}.{q.qnum}.{t}"
+    return f"{q.contentref}@{'-'.join([str(x) for x in q.wref])}.{q.qnum}.{t}"
 
 def swap_type(t):
     if t == 'a':
@@ -54,36 +54,51 @@ def swap_type(t):
 
 def pair_q_and_a(qs):
     out = []
-    answers = list(filter(lambda x: x.type == 'a', qs))
-    questions = list(filter(lambda x: x.type == 'q', qs))
+    answers = [x for x in qs if x.type == 'a']
+    questions = [x for x in qs if x.type == 'q']
     for q in questions:
         ref = build_q_ref(q, 'q')
-        q_answers = list(filter(lambda x: build_q_ref(x, 'q') == ref, answers))
+        q_answers = [x for x in answers if build_q_ref(x, 'q') == ref]
         out.append((q, q_answers))
     return out
 
 
-def markdown_output(qandas, text_lines, bold_target_words=False):
-    for q, answers in qandas:
-        text = text_lines[q.contentref]
-        words= text.split(' ')
-        if bold_target_words:
-            if len(q.wref) > 1:
-                targeted_words = ' '.join(words[q.wref[0]:q.wref[1] + 1])
-                print("## " + text.replace(targeted_words, f"**{targeted_words}**"))
-            else:
-                targeted_words = words[q.wref[0]]
-                print("## " + text.replace(targeted_words, f"**{targeted_words}**"))
-        else:
+def markdown_output(qandas, text_lines, bold_target_words=False, group_questions_by_text=True):
+    if group_questions_by_text:
+        for t in text_lines.keys():
+            qs = [(q, a) for (q,a) in qandas if q.contentref == t]
+            text = text_lines[t]
             print("## " + text)
-        print()
-
-        print("Q: " + q.content)
-        print()
-        for a in answers:
-            print(f"A: {a.content}")
             print()
-        print()
+            for q, answers in qs:
+                print("Q: " + q.content)
+                print()
+                for a in answers:
+                    print(f"A: {a.content}")
+                    print()
+                print()
+            print()
+    else:
+        for q, answers in qandas:
+            text = text_lines[q.contentref]
+            words= text.split(' ')
+            if bold_target_words:
+                if len(q.wref) > 1:
+                    targeted_words = ' '.join(words[q.wref[0]:q.wref[1] + 1])
+                    print("## " + text.replace(targeted_words, f"**{targeted_words}**"))
+                else:
+                    targeted_words = words[q.wref[0]]
+                    print("## " + text.replace(targeted_words, f"**{targeted_words}**"))
+            else:
+                print("## " + text)
+            print()
+
+            print("Q: " + q.content)
+            print()
+            for a in answers:
+                print(f"A: {a.content}")
+                print()
+            print()
 
 if __name__ == '__main__':
     args = sys.argv[1:]
