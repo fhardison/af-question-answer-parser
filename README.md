@@ -44,7 +44,7 @@ Finally, any line in the question file starting with `#` is considered a comment
 
 See `test_questions.txt` for more examples.
 
-## Example usage
+## Usage
 
 If you pull this repo and run the following, the you should display the what is found in `qoutput.md` on your terminal window. You can then pipe this into whatever file you want and you've got markdown formatted questions.
 
@@ -66,9 +66,19 @@ python3 qaparser.py test_questions.txt 015-diognetus.txt --show-text True > qout
 python3 qaparser.py test_questions.txt 015-diognetus.txt --show-text True --bold-text True > qoutput-text-bold.md
 ```
 
+Markdown is the default output format. You can change to reveal.js output by adding `--format reveal`. The line below will create a reveal.js html file and pipe it to `reveal-test.html`.
 
-
+```
+python3 qaparser.py test_questions.txt 015-diognetus.txt --format reveal > reveal-test.html
+```
 
 ## License
 
 This work is licensed under a [Creative Commons Attribution-ShareAlike 4.0 International License](http://creativecommons.org/licenses/by-sa/4.0/).
+
+The following files are from [reveal.js](https://github.com/hakimel/reveal.js/) and are released there under an MIT license as described on that repo.
+
+* `reveal.js`
+* `reveal.css`
+* `reset.css`
+* `black.css`

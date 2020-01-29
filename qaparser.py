@@ -3,6 +3,53 @@ from collections import namedtuple
 import sys
 
 
+REVEAL_HEAD = """
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <link rel="stylesheet" href="reset.css">
+    <link rel="stylesheet" href="reveal.css">
+    <link rel="stylesheet" href="black.css">
+
+        <!-- Printing and PDF exports -->
+    <script>
+        var link = document.createElement( 'link' );
+        link.rel = 'stylesheet';
+        link.type = 'text/css';
+        link.href = window.location.search.match( /print-pdf/gi ) ? 'css/print/pdf.css' : 'css/print/paper.css';
+        document.getElementsByTagName( 'head' )[0].appendChild( link );
+    </script>
+</head>
+<body>
+    <div class="reveal">
+        <div class="slides">"""
+
+REVEAL_END = """</div>
+</div>
+
+<script src="reveal.js"></script>
+
+<script>
+// More info about config & dependencies:
+// - https://github.com/hakimel/reveal.js#configuration
+// - https://github.com/hakimel/reveal.js#dependencies
+Reveal.initialize();
+/*Reveal.initialize({
+    dependencies: [
+        { src: 'plugin/markdown/marked.js' },
+        { src: 'plugin/markdown/markdown.js' },
+        { src: 'plugin/notes/notes.js', async: true },
+        { src: 'plugin/highlight/highlight.js', async: true }
+    ]
+}); */
+</script>
+</body>
+</html>
+"""
+
 Question = namedtuple('Question', ['wref', 'qnum', 'type', 'contentref', 'content'])
 
 def parse_question_address(line):
@@ -60,6 +107,55 @@ def pair_q_and_a(qs):
         out.append((q, q_answers))
     return out
 
+def reveal_slide(q, answers, text, bold_target_words):
+    out = []
+    for a in answers:
+        if len(out) < 1:
+            out.append('\t\t<li>' + a.content + '</li>')
+        else:
+            out.append(out[len(out) - 2] + '\n' + '\t\t<li>' + a.content + '</li>')
+
+    return '\n'.join([
+    f"""<section>
+    <p style="font-size:1.15em;margin-bottom:1em;">{text}</p>
+    <p><em>{q.content}</em></p>
+    <ul>
+    {a}
+    </ul>
+    </section>""" for a in out])
+
+def reveal_output(qandas, text_lines, bold_target_words=False):
+    print(REVEAL_HEAD)
+    for t in text_lines.keys():
+        qs = [(q, a) for (q,a) in qandas if q.contentref == t]
+        text = text_lines[t]
+        if len(qs) > 1:
+            print("<section>")
+            for q,a in qs:
+                if bold_target_words:
+                    words= text.split(' ')
+                    if len(q.wref) > 1:
+                        targeted_words = ' '.join(words[q.wref[0]:q.wref[1] + 1])
+                        print(reveal_slide(q,a,text.replace(targeted_words, f"<strong>{targeted_words}</strong>"), bold_target_words))
+                    else:
+                        targeted_words = words[q.wref[0]]
+                        print(reveal_slide(q,a,text.replace(targeted_words, f"<strong>{targeted_words}</strong>"), bold_target_words))
+                else:
+                    print(reveal_slide(q,a, text, bold_target_words))
+            print("</section>")
+        else:
+            for q,a in qs:
+                if bold_target_words:
+                    words= text.split(' ')
+                    if len(q.wref) > 1:
+                        targeted_words = ' '.join(words[q.wref[0]:q.wref[1] + 1])
+                        print(reveal_slide(q,a,text.replace(targeted_words, f"<strong>{targeted_words}</strong>"), bold_target_words))
+                    else:
+                        targeted_words = words[q.wref[0]]
+                        print(reveal_slide(q,a,text.replace(targeted_words, f"<strong>{targeted_words}</strong>"), bold_target_words))
+                else:
+                    print(reveal_slide(q,a, text, bold_target_words))
+    print(REVEAL_END)
 
 def markdown_output(qandas, text_lines, bold_target_words=False, group_questions_by_text=True):
     if group_questions_by_text:
@@ -93,9 +189,12 @@ def markdown_output(qandas, text_lines, bold_target_words=False, group_questions
 
             print("Q: " + q.content)
             print()
-            for a in answers:
-                print(f"A: {a.content}")
+            if len(answers) > 0:
+                print("A:")
                 print()
+                for a in answers:
+                    print(f"* {a.content}")
+                    print()
             print()
 
 if __name__ == '__main__':
@@ -114,8 +213,9 @@ if __name__ == '__main__':
     usage='%(prog)s [options] question-path text-path')
     my_parser.add_argument("Question", metavar="question-path", type=str, help="path to question file")
     my_parser.add_argument("Text", metavar="text-path", type=str, help="path to 'text' file")
-    my_parser.add_argument('--show-text', action='store', type=str2bool, default='False')
-    my_parser.add_argument('--bold-text', action='store', type=str2bool, default='False')
+    my_parser.add_argument('--show-text', action='store', type=str2bool, default='False', help="repeat the text for each qustion (does not apply to reveal output)")
+    my_parser.add_argument('--bold-text', action='store', type=str2bool, default='False', help="True to bold words in the text the question pertains to")
+    my_parser.add_argument('--format', action='store', type=str, default='md', help="md for markdown (default); reveal for reveal.js output.")
 
     args = my_parser.parse_args()
 
@@ -123,7 +223,10 @@ if __name__ == '__main__':
     refs = [x.contentref for x in questions]
     text_lines = read_af_text(args.Text, refs)
     paired_qs = pair_q_and_a(questions)
-    markdown_output(paired_qs, text_lines, bool(args.bold_text), not bool(args.show_text))
+    if args.format.lower() == "reveal":
+        reveal_output(paired_qs, text_lines, bool(args.bold_text) )
+    else:
+        markdown_output(paired_qs, text_lines, bool(args.bold_text), not bool(args.show_text))
 
 
 
