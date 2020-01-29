@@ -5,8 +5,6 @@ import sys
 
 Question = namedtuple('Question', ['wref', 'qnum', 'type', 'contentref', 'content'])
 
-
-
 def parse_question_address(line):
     address, content = line.split(' ', maxsplit=1)
     ref, qdata = address.split('@', maxsplit=1)
@@ -101,15 +99,31 @@ def markdown_output(qandas, text_lines, bold_target_words=False, group_questions
             print()
 
 if __name__ == '__main__':
-    args = sys.argv[1:]
-    if len(args) < 2:
-        print("Insufficient arguments")
-        exit()
-    questions = read_questions(args[0])
-    refs = list(map(lambda x: x.contentref, questions))
-    text_lines = read_af_text(args[1], refs)
+    import argparse
+    def str2bool(v):
+        if isinstance(v, bool):
+           return v
+        if v.lower() in ('yes', 'true', 't', 'y', '1'):
+            return True
+        elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+            return False
+        else:
+            raise argparse.ArgumentTypeError('Boolean value expected.')
+
+    my_parser = argparse.ArgumentParser(prog="af-question-generator",
+    usage='%(prog)s [options] question-path text-path')
+    my_parser.add_argument("Question", metavar="question-path", type=str, help="path to question file")
+    my_parser.add_argument("Text", metavar="text-path", type=str, help="path to 'text' file")
+    my_parser.add_argument('--show-text', action='store', type=str2bool, default='False')
+    my_parser.add_argument('--bold-text', action='store', type=str2bool, default='False')
+
+    args = my_parser.parse_args()
+
+    questions = read_questions(args.Question)
+    refs = [x.contentref for x in questions]
+    text_lines = read_af_text(args.Text, refs)
     paired_qs = pair_q_and_a(questions)
-    markdown_output(paired_qs, text_lines)
+    markdown_output(paired_qs, text_lines, bool(args.bold_text), not bool(args.show_text))
 
 
 

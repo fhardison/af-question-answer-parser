@@ -38,6 +38,10 @@ This line is the answer for the question above.
 2.5@0.1.a τα καλοῦνται θεούς;
 ```
 
+Note that questions do not require the presence of a corresponding answer.
+
+Finally, any line in the question file starting with `#` is considered a comment and will be ignored.
+
 See `test_questions.txt` for more examples.
 
 ## Example usage
@@ -47,6 +51,21 @@ If you pull this repo and run the following, the you should display the what is 
 ```
 python3 qaparser.py test_questions.txt 015-diognetus.txt
 ```
+
+If run as above, the script will output the text and then any questions and answers pertaining to that text without repeating the text.
+
+Adding `--show-text True` will cause it to repeated the text before each question. If you use `--show-text True` you can add `--bold-text True` to bold the words in the text that the question pertains to.
+
+Run the following commands to see how this works.
+
+```
+python3 qaparser.py test_questions.txt 015-diognetus.txt --show-text True > qoutput-text.md
+```
+
+```
+python3 qaparser.py test_questions.txt 015-diognetus.txt --show-text True --bold-text True > qoutput-text-bold.md
+```
+
 
 
 
